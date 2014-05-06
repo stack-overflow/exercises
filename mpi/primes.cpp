@@ -62,7 +62,7 @@ void deallocate_tmp_result_arrays(int ***array, int num_arrays)
 
 int main(int argc, char** argv)
 {
-    ios_base::sync_with_stdio(0);
+    std::ios_base::sync_with_stdio(0);
     srand(time(0));
 
     int rank, world_size;
