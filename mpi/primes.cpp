@@ -62,6 +62,7 @@ void deallocate_tmp_result_arrays(int ***array, int num_arrays)
 
 int main(int argc, char** argv)
 {
+    ios_base::sync_with_stdio(0);
     srand(time(0));
 
     int rank, world_size;
@@ -84,6 +85,7 @@ int main(int argc, char** argv)
         allocate_tmp_result_arrays(&tmp_results, world_size - 1, RANGESIZE);
 
         std::vector<int> final_result;
+        final_result.reserve(ARRAY_SIZE / 2);
 
         for (int i = 1; i < world_size; ++i)
         {
