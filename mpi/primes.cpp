@@ -53,10 +53,11 @@ void allocate_tmp_result_arrays(int ***array, int num_arrays, int arrays_size)
 
 void deallocate_tmp_result_arrays(int ***array, int num_arrays)
 {
-    std::for_each((*array),
-                  (*array) + (num_arrays - 1),
-                  std::default_delete<int[]>());
-    
+    for (int i = 0; i < num_arrays; ++i)
+    {
+        delete [] (*array)[i];
+    }
+
     delete [] (*array);
 }
 
@@ -159,9 +160,18 @@ int main(int argc, char** argv)
         while (num_recv < NUM_RANGES)
         {
             MPI_Waitany(2 * (world_size - 1), requests, &index, &status);
-            ++num_recv;
-            MPI_Get_count(&status, MPI_INT, &count);
-            std::cout << "Master received " << count << " numbers. Lasting." << std::endl;
+            
+            if (index < (world_size - 1))
+            {
+                MPI_Get_count(&status, MPI_INT, &count);
+                std::cout << "Master received " << count << " numbers. Lasting." << std::endl;
+
+                ++num_recv;
+                for (int i = 0; i < count; ++i)
+                {
+                    final_result.push_back(tmp_results[index][i]);
+                }
+            }
         }
 
         for (int i = 0; i < final_result.size(); ++i)
@@ -194,8 +204,7 @@ int main(int argc, char** argv)
         requests[0] = requests[1] = MPI_REQUEST_NULL;
 
         MPI_Recv(recv_vector_first, RANGESIZE, MPI_INT, 0, DATA, MPI_COMM_WORLD, &status);
-        
-        int *to_solve = recv_vector_first;
+
         while (true)
         {
             MPI_Irecv(recv_vector_second, RANGESIZE, MPI_INT, 0, DATA, MPI_COMM_WORLD, &requests[0]);
@@ -203,20 +212,20 @@ int main(int argc, char** argv)
             int *end_solved = std::remove_if(recv_vector_first, recv_vector_first + RANGESIZE, not_prime);
             MPI_Waitall(2, requests, MPI_STATUSES_IGNORE);
 
-            if (recv_vector_second[0] == -1)
-            {
-                break;
-            }
-
             std::swap(recv_vector_first, recv_vector_third);
             std::swap(recv_vector_first, recv_vector_second);
 
-            // frist -> master
             MPI_Isend(
                 recv_vector_third,
                 std::distance(recv_vector_third, end_solved),
                 MPI_INT, 0, RESULT, MPI_COMM_WORLD,
                 &requests[1]);
+
+            if (recv_vector_first[0] == -1)
+            {
+                MPI_Waitall(2, requests, MPI_STATUSES_IGNORE);
+                break;
+            }
         }
 
         delete [] requests;
